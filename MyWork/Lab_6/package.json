@@ -1,0 +1,19 @@
+{
+  "name": "videohub-prisma",
+  "version": "1.0.0",
+  "description": "Lab 6 — Prisma ORM schema migrations for VideoHub",
+  "main": "index.js",
+  "scripts": {
+    "studio": "prisma studio",
+    "migrate": "prisma migrate dev",
+    "pull": "prisma db pull",
+    "generate": "prisma generate",
+    "seed": "node seed.js"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0"
+  }
+}

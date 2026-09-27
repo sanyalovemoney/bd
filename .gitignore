@@ -1,0 +1,20 @@
+# Чужий код курсу (не наш)
+bdlabs/
+DB_Labs/
+DB_template/
+
+# Старі звіти
+MyWork/_reports/
+
+# Node / Prisma
+node_modules/
+MyWork/Lab_6/node_modules/
+
+# Екологічні секрети
+.env
+MyWork/Lab_6/.env
+*.env
+
+# Системні
+.DS_Store
+Thumbs.db

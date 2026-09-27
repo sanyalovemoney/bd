@@ -1,0 +1,74 @@
+erDiagram
+    %% ========================================
+    %% VideoHub — ER-діаграма (5 сутностей)
+    %% ========================================
+
+    User {
+        BIGINT user_id PK
+        VARCHAR username UK
+        VARCHAR email UK
+        VARCHAR password_hash
+        VARCHAR google_id UK
+        TEXT avatar_url
+        TEXT bio
+        BOOLEAN is_channel
+        TIMESTAMPTZ created_at
+    }
+
+    Video {
+        BIGINT video_id PK
+        BIGINT user_id FK
+        VARCHAR title
+        TEXT description
+        TEXT video_url
+        TEXT thumbnail_url
+        INTEGER duration_seconds
+        INTEGER views
+        BOOLEAN is_public
+        TIMESTAMPTZ created_at
+    }
+
+    Comment {
+        BIGINT comment_id PK
+        BIGINT user_id FK
+        BIGINT video_id FK
+        BIGINT parent_comment_id FK
+        TEXT text
+        TIMESTAMPTZ created_at
+    }
+
+    Like {
+        BIGINT like_id PK
+        BIGINT user_id FK
+        BIGINT video_id FK
+        BOOLEAN is_like
+        TIMESTAMPTZ created_at
+    }
+
+    Subscription {
+        BIGINT subscriber_id PK_FK
+        BIGINT channel_id PK_FK
+        TIMESTAMPTZ created_at
+    }
+
+    %% === Зв'язки ===
+
+    %% 1. User -> Video (1:N) — канал завантажує відео
+    User ||--o{ Video : "uploads"
+
+    %% 2. User -> Comment (1:N) — користувач пише коментар
+    User ||--o{ Comment : "writes"
+
+    %% 3. Video -> Comment (1:N) — відео має коментарі
+    Video ||--o{ Comment : "has"
+
+    %% 4. User -> Like (1:N) — користувач ставить вподобайку
+    User ||--o{ Like : "gives"
+
+    %% 5. Video -> Like (1:N) — відео отримує вподобайки
+    Video ||--o{ Like : "receives"
+
+    %% 6-7. User -> Subscription (M:N self-reference)
+    %% Підписка — це асоціативна таблиця між двома ролями User
+    User ||--o{ Subscription : "subscriber"
+    User ||--o{ Subscription : "channel"

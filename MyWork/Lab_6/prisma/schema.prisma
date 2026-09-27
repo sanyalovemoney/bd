@@ -1,0 +1,160 @@
+// VideoHub — Prisma schema (final, after all migrations)
+// Lab 6: Schema migrations with Prisma ORM
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// User — користувач / канал (авторизація, профіль, OAuth)
+// ============================================================
+model User {
+  id            Int       @id @default(autoincrement())
+  username      String    @unique @db.VarChar(30)
+  email         String    @unique @db.VarChar(255)
+  password_hash String?   @db.VarChar(255)
+  google_id     String?   @unique @db.VarChar(255)
+  avatar_url    String?
+  bio           String?
+  is_channel    Boolean   @default(false)
+  is_verified   Boolean   @default(false) // ✅ додано у міграції add_user_is_verified
+  created_at    DateTime  @default(now()) @db.Timestamptz
+
+  // 1:N — цей користувач завантажив багато відео
+  videos        Video[]
+  // 1:N — цей користувач залишив багато коментарів
+  comments      Comment[]
+  // 1:N — цей користувач поставив багато лайків
+  likes         Like[]
+  // M:N (subscriber) — на кого я підписаний
+  subscriptions Subscription[] @relation("subscriber")
+  // M:N (channel) — хто підписаний на мій канал
+  channels      Subscription[] @relation("channel")
+  // 1:N — playlists owned by this user
+  playlists     Playlist[]
+}
+
+// ============================================================
+// Video — відео на платформі
+// ============================================================
+model Video {
+  id               Int       @id @default(autoincrement())
+  user_id          Int
+  title            String    @db.VarChar(255)
+  description      String?
+  video_url        String
+  thumbnail_url    String?
+  duration_seconds Int
+  views            Int       @default(0)
+  is_public        Boolean   @default(true)
+  created_at       DateTime  @default(now()) @db.Timestamptz
+
+  // FK → User ON DELETE CASCADE
+  user             User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  // 1:N — до цього відео залишено багато коментарів
+  comments         Comment[]
+  // 1:N — цьому відео поставлено багато лайків
+  likes            Like[]
+  // M:N — це відео в багатьох плейлистах
+  playlists        PlaylistVideo[]
+
+  @@index([user_id])
+}
+
+// ============================================================
+// Comment — коментар до відео (підтримує вкладеність через parent_comment_id)
+// ============================================================
+model Comment {
+  id                Int       @id @default(autoincrement())
+  user_id           Int
+  video_id          Int
+  parent_comment_id Int?
+  text              String
+  created_at        DateTime  @default(now()) @db.Timestamptz
+
+  // FK → User ON DELETE CASCADE
+  user              User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  // FK → Video ON DELETE CASCADE
+  video             Video     @relation(fields: [video_id], references: [id], onDelete: Cascade)
+  // Self-relation: відповіді на коментар
+  parent            Comment?  @relation("comment_replies", fields: [parent_comment_id], references: [id], onDelete: Cascade)
+  replies           Comment[] @relation("comment_replies")
+
+  @@index([video_id])
+  @@index([user_id])
+  @@index([parent_comment_id])
+}
+
+// ============================================================
+// Like — вподобайка / дизлайк (UNIQUE по user_id + video_id)
+// ============================================================
+model Like {
+  id        Int      @id @default(autoincrement())
+  user_id   Int
+  video_id  Int
+  is_like   Boolean
+  created_at DateTime @default(now()) @db.Timestamptz
+
+  // FK → User ON DELETE CASCADE
+  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  // FK → Video ON DELETE CASCADE
+  video     Video    @relation(fields: [video_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, video_id])
+  @@index([video_id])
+}
+
+// ============================================================
+// Subscription — підписка користувача на канал (M:N self-relation на User)
+// Складений PK: (subscriber_id, channel_id)
+// ============================================================
+model Subscription {
+  subscriber_id Int
+  channel_id    Int
+  created_at    DateTime @default(now()) @db.Timestamptz
+
+  subscriber    User @relation("subscriber", fields: [subscriber_id], references: [id], onDelete: Cascade)
+  channel       User @relation("channel",    fields: [channel_id],    references: [id], onDelete: Cascade)
+
+  @@id([subscriber_id, channel_id])
+  @@index([channel_id])
+}
+
+// ============================================================
+// Playlist — плейлист, створений користувачем
+// Додано у міграції add_playlist
+// ============================================================
+model Playlist {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  title      String   @db.VarChar(255)
+  created_at DateTime @default(now()) @db.Timestamptz
+
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  videos     PlaylistVideo[]
+
+  @@index([user_id])
+}
+
+// ============================================================
+// PlaylistVideo — junction-таблиця M:N між Playlist та Video
+// Складений PK: (playlist_id, video_id)
+// Додано у міграції add_playlist
+// ============================================================
+model PlaylistVideo {
+  playlist_id Int
+  video_id    Int
+  added_at    DateTime @default(now()) @db.Timestamptz
+
+  playlist    Playlist @relation(fields: [playlist_id], references: [id], onDelete: Cascade)
+  video       Video    @relation(fields: [video_id],    references: [id], onDelete: Cascade)
+
+  @@id([playlist_id, video_id])
+  @@index([video_id])
+}
